@@ -35,10 +35,33 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
-const inventoryData = [
+interface InventoryItem {
+  id: string;
+  name: string;
+  category: string;
+  sku: string;
+  costPrice: number;
+  sellingPrice: number;
+  stock: number;
+  minStock: number;
+  supplier: string;
+}
+
+const initialInventoryData: InventoryItem[] = [
   { id: "1", name: "iPhone 14 Pro Case", category: "Accessories", sku: "ACC-001", costPrice: 800, sellingPrice: 1500, stock: 45, minStock: 10, supplier: "TechHub" },
   { id: "2", name: "Samsung Charger 25W", category: "Accessories", sku: "ACC-002", costPrice: 1500, sellingPrice: 2500, stock: 5, minStock: 15, supplier: "SamsungPK" },
   { id: "3", name: "AirPods Pro", category: "Accessories", sku: "ACC-003", costPrice: 35000, sellingPrice: 45000, stock: 8, minStock: 5, supplier: "ApplePK" },
@@ -50,9 +73,14 @@ const inventoryData = [
 ];
 
 export default function Inventory() {
+  const [inventoryData, setInventoryData] = useState<InventoryItem[]>(initialInventoryData);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<InventoryItem | null>(null);
+  const [editForm, setEditForm] = useState<InventoryItem | null>(null);
 
   const filteredInventory = inventoryData.filter((item) => {
     const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -63,6 +91,45 @@ export default function Inventory() {
 
   const lowStockCount = inventoryData.filter((item) => item.stock <= item.minStock).length;
   const totalValue = inventoryData.reduce((sum, item) => sum + item.sellingPrice * item.stock, 0);
+
+  const handleEdit = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setEditForm({ ...item });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!editForm) return;
+    
+    setInventoryData((prev) =>
+      prev.map((item) => (item.id === editForm.id ? editForm : item))
+    );
+    setIsEditDialogOpen(false);
+    setSelectedItem(null);
+    setEditForm(null);
+    toast({
+      title: "Product Updated",
+      description: "The product has been updated successfully.",
+    });
+  };
+
+  const handleDeleteClick = (item: InventoryItem) => {
+    setSelectedItem(item);
+    setIsDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!selectedItem) return;
+    
+    setInventoryData((prev) => prev.filter((item) => item.id !== selectedItem.id));
+    setIsDeleteDialogOpen(false);
+    setSelectedItem(null);
+    toast({
+      title: "Product Deleted",
+      description: "The product has been removed from inventory.",
+      variant: "destructive",
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -246,11 +313,21 @@ export default function Inventory() {
                 </TableCell>
                 <TableCell className="text-muted-foreground">{item.supplier}</TableCell>
                 <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 hover:bg-primary/10 hover:text-primary"
+                      onClick={() => handleEdit(item)}
+                    >
                       <Edit className="w-4 h-4" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      onClick={() => handleDeleteClick(item)}
+                    >
                       <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
@@ -260,6 +337,130 @@ export default function Inventory() {
           </TableBody>
         </Table>
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Product</DialogTitle>
+          </DialogHeader>
+          {editForm && (
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-name">Product Name</Label>
+                <Input
+                  id="edit-name"
+                  value={editForm.name}
+                  onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-category">Category</Label>
+                  <Select
+                    value={editForm.category.toLowerCase()}
+                    onValueChange={(value) => setEditForm({ ...editForm, category: value.charAt(0).toUpperCase() + value.slice(1) })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="accessories">Accessories</SelectItem>
+                      <SelectItem value="used phone">Used Phone</SelectItem>
+                      <SelectItem value="repair service">Repair Service</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-sku">SKU/Barcode</Label>
+                  <Input
+                    id="edit-sku"
+                    value={editForm.sku}
+                    onChange={(e) => setEditForm({ ...editForm, sku: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-cost">Cost Price</Label>
+                  <Input
+                    id="edit-cost"
+                    type="number"
+                    value={editForm.costPrice}
+                    onChange={(e) => setEditForm({ ...editForm, costPrice: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-selling">Selling Price</Label>
+                  <Input
+                    id="edit-selling"
+                    type="number"
+                    value={editForm.sellingPrice}
+                    onChange={(e) => setEditForm({ ...editForm, sellingPrice: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="edit-stock">Stock</Label>
+                  <Input
+                    id="edit-stock"
+                    type="number"
+                    value={editForm.stock}
+                    onChange={(e) => setEditForm({ ...editForm, stock: Number(e.target.value) })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="edit-minStock">Min Stock Level</Label>
+                  <Input
+                    id="edit-minStock"
+                    type="number"
+                    value={editForm.minStock}
+                    onChange={(e) => setEditForm({ ...editForm, minStock: Number(e.target.value) })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-supplier">Supplier</Label>
+                <Input
+                  id="edit-supplier"
+                  value={editForm.supplier}
+                  onChange={(e) => setEditForm({ ...editForm, supplier: e.target.value })}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button variant="outline" className="flex-1" onClick={() => setIsEditDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button className="flex-1" onClick={handleSaveEdit}>
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Product</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete "{selectedItem?.name}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Yes, Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
