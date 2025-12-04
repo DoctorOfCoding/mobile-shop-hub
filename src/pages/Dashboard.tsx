@@ -21,8 +21,27 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 export default function Dashboard() {
+  const { stats, loading } = useDashboardStats();
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-32" />)}
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <Skeleton className="lg:col-span-2 h-80" />
+          <Skeleton className="h-80" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -57,30 +76,24 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Today's Sales"
-          value="Rs 47,850"
+          value={`Rs ${stats.todaySales.toLocaleString()}`}
           icon={<DollarSign className="w-5 h-5" />}
-          trend={12}
-          trendLabel="vs yesterday"
           variant="primary"
         />
         <StatCard
           title="Weekly Revenue"
-          value="Rs 312,400"
+          value={`Rs ${stats.weeklyRevenue.toLocaleString()}`}
           icon={<TrendingUp className="w-5 h-5" />}
-          trend={8}
-          trendLabel="vs last week"
         />
         <StatCard
           title="Monthly Sales"
-          value="Rs 1,247,500"
+          value={`Rs ${stats.monthlySales.toLocaleString()}`}
           icon={<ShoppingBag className="w-5 h-5" />}
-          trend={15}
-          trendLabel="vs last month"
           variant="success"
         />
         <StatCard
           title="Pending Repairs"
-          value="12"
+          value={stats.pendingRepairs.toString()}
           icon={<Wrench className="w-5 h-5" />}
           variant="accent"
         />
