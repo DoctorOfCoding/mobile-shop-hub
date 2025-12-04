@@ -4,10 +4,11 @@ import {
   Plus,
   Filter,
   Smartphone,
-  DollarSign,
   TrendingUp,
   Tag,
   ShoppingBag,
+  Pencil,
+  Trash2,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -26,70 +27,20 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-
-const usedPhones = [
-  {
-    id: "UP-001",
-    model: "iPhone 14 Pro Max 256GB",
-    imei: "123456789012345",
-    condition: "excellent",
-    purchasePrice: 150000,
-    expectedSellingPrice: 175000,
-    purchasedFrom: "Ahmed Khan",
-    purchasedAt: "2024-01-10",
-    status: "in_stock",
-  },
-  {
-    id: "UP-002",
-    model: "Samsung S23 Ultra 512GB",
-    imei: "987654321098765",
-    condition: "good",
-    purchasePrice: 120000,
-    expectedSellingPrice: 145000,
-    purchasedFrom: "Ali Hassan",
-    purchasedAt: "2024-01-12",
-    status: "in_stock",
-  },
-  {
-    id: "UP-003",
-    model: "iPhone 13 Pro 128GB",
-    imei: "456789012345678",
-    condition: "fair",
-    purchasePrice: 80000,
-    expectedSellingPrice: 95000,
-    actualSellingPrice: 92000,
-    purchasedFrom: "Sara Ahmed",
-    purchasedAt: "2024-01-05",
-    soldAt: "2024-01-14",
-    status: "sold",
-  },
-  {
-    id: "UP-004",
-    model: "Google Pixel 8 Pro 256GB",
-    imei: "789012345678901",
-    condition: "excellent",
-    purchasePrice: 100000,
-    expectedSellingPrice: 120000,
-    purchasedFrom: "Bilal Raza",
-    purchasedAt: "2024-01-14",
-    status: "in_stock",
-  },
-  {
-    id: "UP-005",
-    model: "OnePlus 11 256GB",
-    imei: "234567890123456",
-    condition: "good",
-    purchasePrice: 65000,
-    expectedSellingPrice: 78000,
-    actualSellingPrice: 75000,
-    purchasedFrom: "Fatima Ali",
-    purchasedAt: "2024-01-08",
-    soldAt: "2024-01-15",
-    status: "sold",
-  },
-];
+import { useUsedPhones, UsedPhone, UsedPhoneFormData } from "@/hooks/useUsedPhones";
 
 const conditionConfig = {
   excellent: { label: "Excellent", color: "bg-success/10 text-success border-success/20" },
@@ -99,21 +50,98 @@ const conditionConfig = {
 };
 
 export default function UsedPhones() {
+  const { usedPhones, loading, addUsedPhone, updateUsedPhone, sellPhone, deleteUsedPhone } = useUsedPhones();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isSellDialogOpen, setIsSellDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [selectedPhone, setSelectedPhone] = useState<UsedPhone | null>(null);
+  const [sellPrice, setSellPrice] = useState(0);
+  const [formData, setFormData] = useState<UsedPhoneFormData>({
+    model: "", imei: "", condition: "good", purchase_price: 0, expected_selling_price: 0, purchased_from: ""
+  });
 
   const filteredPhones = usedPhones.filter((phone) => {
-    const matchesSearch = phone.model.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      phone.imei.includes(searchQuery);
+    const matchesSearch = phone.model.toLowerCase().includes(searchQuery.toLowerCase()) || phone.imei.includes(searchQuery);
     const matchesStatus = selectedStatus === "all" || phone.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
 
   const inStockPhones = usedPhones.filter((p) => p.status === "in_stock");
   const soldPhones = usedPhones.filter((p) => p.status === "sold");
-  const totalProfit = soldPhones.reduce((sum, p) => sum + ((p.actualSellingPrice || 0) - p.purchasePrice), 0);
-  const inventoryValue = inStockPhones.reduce((sum, p) => sum + p.expectedSellingPrice, 0);
+  const totalProfit = soldPhones.reduce((sum, p) => sum + (Number(p.actual_selling_price || 0) - Number(p.purchase_price)), 0);
+  const inventoryValue = inStockPhones.reduce((sum, p) => sum + Number(p.expected_selling_price), 0);
+
+  const handleAdd = async () => {
+    const success = await addUsedPhone(formData);
+    if (success) {
+      setIsAddDialogOpen(false);
+      setFormData({ model: "", imei: "", condition: "good", purchase_price: 0, expected_selling_price: 0, purchased_from: "" });
+    }
+  };
+
+  const handleEdit = async () => {
+    if (!selectedPhone) return;
+    const success = await updateUsedPhone(selectedPhone.id, formData);
+    if (success) {
+      setIsEditDialogOpen(false);
+      setSelectedPhone(null);
+    }
+  };
+
+  const handleSell = async () => {
+    if (!selectedPhone) return;
+    const success = await sellPhone(selectedPhone.id, sellPrice);
+    if (success) {
+      setIsSellDialogOpen(false);
+      setSelectedPhone(null);
+      setSellPrice(0);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!selectedPhone) return;
+    const success = await deleteUsedPhone(selectedPhone.id);
+    if (success) {
+      setIsDeleteDialogOpen(false);
+      setSelectedPhone(null);
+    }
+  };
+
+  const openEditDialog = (phone: UsedPhone) => {
+    setSelectedPhone(phone);
+    setFormData({
+      model: phone.model,
+      imei: phone.imei,
+      condition: phone.condition,
+      purchase_price: Number(phone.purchase_price),
+      expected_selling_price: Number(phone.expected_selling_price),
+      purchased_from: phone.purchased_from
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const openSellDialog = (phone: UsedPhone) => {
+    setSelectedPhone(phone);
+    setSellPrice(Number(phone.expected_selling_price));
+    setIsSellDialogOpen(true);
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24" />)}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5].map((i) => <Skeleton key={i} className="h-64" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -125,7 +153,7 @@ export default function UsedPhones() {
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="glow">
+            <Button variant="glow" onClick={() => setFormData({ model: "", imei: "", condition: "good", purchase_price: 0, expected_selling_price: 0, purchased_from: "" })}>
               <Plus className="w-4 h-4 mr-2" />
               Buy Used Phone
             </Button>
@@ -136,19 +164,17 @@ export default function UsedPhones() {
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="model">Phone Model</Label>
-                <Input id="model" placeholder="e.g. iPhone 14 Pro Max 256GB" />
+                <Label>Phone Model</Label>
+                <Input value={formData.model} onChange={(e) => setFormData({ ...formData, model: e.target.value })} placeholder="e.g. iPhone 14 Pro Max 256GB" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="imei">IMEI Number</Label>
-                <Input id="imei" placeholder="15 digit IMEI" />
+                <Label>IMEI Number</Label>
+                <Input value={formData.imei} onChange={(e) => setFormData({ ...formData, imei: e.target.value })} placeholder="15 digit IMEI" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="condition">Condition</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select condition" />
-                  </SelectTrigger>
+                <Label>Condition</Label>
+                <Select value={formData.condition} onValueChange={(v) => setFormData({ ...formData, condition: v as UsedPhoneFormData["condition"] })}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="excellent">Excellent</SelectItem>
                     <SelectItem value="good">Good</SelectItem>
@@ -159,21 +185,19 @@ export default function UsedPhones() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="purchasePrice">Purchase Price (Rs)</Label>
-                  <Input id="purchasePrice" type="number" placeholder="0" />
+                  <Label>Purchase Price (Rs)</Label>
+                  <Input type="number" value={formData.purchase_price} onChange={(e) => setFormData({ ...formData, purchase_price: Number(e.target.value) })} />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="expectedPrice">Expected Selling (Rs)</Label>
-                  <Input id="expectedPrice" type="number" placeholder="0" />
+                  <Label>Expected Selling (Rs)</Label>
+                  <Input type="number" value={formData.expected_selling_price} onChange={(e) => setFormData({ ...formData, expected_selling_price: Number(e.target.value) })} />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="purchasedFrom">Purchased From</Label>
-                <Input id="purchasedFrom" placeholder="Customer name" />
+                <Label>Purchased From</Label>
+                <Input value={formData.purchased_from} onChange={(e) => setFormData({ ...formData, purchased_from: e.target.value })} placeholder="Customer name" />
               </div>
-              <Button className="w-full" onClick={() => setIsAddDialogOpen(false)}>
-                Add to Inventory
-              </Button>
+              <Button className="w-full" onClick={handleAdd}>Add to Inventory</Button>
             </div>
           </DialogContent>
         </Dialog>
@@ -215,12 +239,7 @@ export default function UsedPhones() {
       <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
         <div className="relative flex-1 w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search by model or IMEI..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-          />
+          <Input placeholder="Search by model or IMEI..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
         </div>
         <Select value={selectedStatus} onValueChange={setSelectedStatus}>
           <SelectTrigger className="w-[180px]">
@@ -238,17 +257,11 @@ export default function UsedPhones() {
       {/* Phones Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {filteredPhones.map((phone) => {
-          const condition = conditionConfig[phone.condition as keyof typeof conditionConfig];
-          const profit = phone.status === "sold" ? (phone.actualSellingPrice || 0) - phone.purchasePrice : phone.expectedSellingPrice - phone.purchasePrice;
+          const condition = conditionConfig[phone.condition];
+          const profit = phone.status === "sold" ? Number(phone.actual_selling_price || 0) - Number(phone.purchase_price) : Number(phone.expected_selling_price) - Number(phone.purchase_price);
 
           return (
-            <div
-              key={phone.id}
-              className={cn(
-                "bg-card rounded-xl border p-4 shadow-card hover:shadow-card-hover transition-all duration-200",
-                phone.status === "sold" ? "border-success/30" : "border-border"
-              )}
-            >
+            <div key={phone.id} className={cn("bg-card rounded-xl border p-4 shadow-card hover:shadow-card-hover transition-all duration-200", phone.status === "sold" ? "border-success/30" : "border-border")}>
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-lg bg-secondary/50 flex items-center justify-center">
@@ -259,59 +272,126 @@ export default function UsedPhones() {
                     <p className="text-xs text-muted-foreground font-mono">{phone.imei}</p>
                   </div>
                 </div>
-                <Badge className={cn("border", condition.color)}>
-                  {condition.label}
-                </Badge>
+                <div className="flex items-center gap-1">
+                  <Badge className={cn("border", condition.color)}>{condition.label}</Badge>
+                  {phone.status === "in_stock" && (
+                    <>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(phone)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { setSelectedPhone(phone); setIsDeleteDialogOpen(true); }}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
+                </div>
               </div>
 
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Purchase Price</span>
-                  <span className="font-medium">Rs {phone.purchasePrice.toLocaleString()}</span>
+                  <span className="font-medium">Rs {Number(phone.purchase_price).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-muted-foreground">
-                    {phone.status === "sold" ? "Sold For" : "Expected Price"}
-                  </span>
-                  <span className="font-medium text-primary">
-                    Rs {(phone.actualSellingPrice || phone.expectedSellingPrice).toLocaleString()}
-                  </span>
+                  <span className="text-muted-foreground">{phone.status === "sold" ? "Sold For" : "Expected Price"}</span>
+                  <span className="font-medium text-primary">Rs {Number(phone.actual_selling_price || phone.expected_selling_price).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between pt-2 border-t border-border">
-                  <span className="text-muted-foreground">
-                    {phone.status === "sold" ? "Profit" : "Expected Profit"}
-                  </span>
-                  <span className="font-semibold text-success">
-                    Rs {profit.toLocaleString()}
-                  </span>
+                  <span className="text-muted-foreground">{phone.status === "sold" ? "Profit" : "Expected Profit"}</span>
+                  <span className="font-semibold text-success">Rs {profit.toLocaleString()}</span>
                 </div>
               </div>
 
               <div className="mt-4 pt-3 border-t border-border">
-                <p className="text-xs text-muted-foreground">
-                  From: {phone.purchasedFrom} • {phone.purchasedAt}
-                </p>
-                {phone.status === "sold" && (
-                  <p className="text-xs text-success mt-1">
-                    Sold on: {phone.soldAt}
-                  </p>
+                <p className="text-xs text-muted-foreground">From: {phone.purchased_from} • {phone.purchased_at}</p>
+                {phone.status === "sold" && phone.sold_at && (
+                  <p className="text-xs text-success mt-1">Sold on: {phone.sold_at}</p>
                 )}
               </div>
 
               {phone.status === "in_stock" && (
                 <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" className="flex-1">
-                    Edit
-                  </Button>
-                  <Button variant="accent" size="sm" className="flex-1">
-                    Sell
-                  </Button>
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => openEditDialog(phone)}>Edit</Button>
+                  <Button variant="accent" size="sm" className="flex-1" onClick={() => openSellDialog(phone)}>Sell</Button>
                 </div>
               )}
             </div>
           );
         })}
       </div>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Used Phone</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Phone Model</Label>
+              <Input value={formData.model} onChange={(e) => setFormData({ ...formData, model: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>IMEI Number</Label>
+              <Input value={formData.imei} onChange={(e) => setFormData({ ...formData, imei: e.target.value })} />
+            </div>
+            <div className="space-y-2">
+              <Label>Condition</Label>
+              <Select value={formData.condition} onValueChange={(v) => setFormData({ ...formData, condition: v as UsedPhoneFormData["condition"] })}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="excellent">Excellent</SelectItem>
+                  <SelectItem value="good">Good</SelectItem>
+                  <SelectItem value="fair">Fair</SelectItem>
+                  <SelectItem value="poor">Poor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Purchase Price (Rs)</Label>
+                <Input type="number" value={formData.purchase_price} onChange={(e) => setFormData({ ...formData, purchase_price: Number(e.target.value) })} />
+              </div>
+              <div className="space-y-2">
+                <Label>Expected Selling (Rs)</Label>
+                <Input type="number" value={formData.expected_selling_price} onChange={(e) => setFormData({ ...formData, expected_selling_price: Number(e.target.value) })} />
+              </div>
+            </div>
+            <Button className="w-full" onClick={handleEdit}>Save Changes</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Sell Dialog */}
+      <Dialog open={isSellDialogOpen} onOpenChange={setIsSellDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Sell Phone</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <p className="text-sm text-muted-foreground">Selling: {selectedPhone?.model}</p>
+            <div className="space-y-2">
+              <Label>Selling Price (Rs)</Label>
+              <Input type="number" value={sellPrice} onChange={(e) => setSellPrice(Number(e.target.value))} />
+            </div>
+            <Button className="w-full" onClick={handleSell}>Confirm Sale</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Phone</AlertDialogTitle>
+            <AlertDialogDescription>Are you sure you want to delete {selectedPhone?.model}? This action cannot be undone.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">Yes</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

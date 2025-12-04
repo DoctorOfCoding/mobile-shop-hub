@@ -18,81 +18,52 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useSales } from "@/hooks/useSales";
+import { useRepairs } from "@/hooks/useRepairs";
 
 const reports = [
-  {
-    title: "Daily Sales Report",
-    description: "Detailed breakdown of today's sales transactions",
-    icon: DollarSign,
-    color: "text-success bg-success/10",
-    type: "sales",
-  },
-  {
-    title: "Weekly Revenue Report",
-    description: "Week-over-week revenue analysis",
-    icon: TrendingUp,
-    color: "text-primary bg-primary/10",
-    type: "sales",
-  },
-  {
-    title: "Monthly P&L Report",
-    description: "Profit and loss statement for the month",
-    icon: FileText,
-    color: "text-info bg-info/10",
-    type: "financial",
-  },
-  {
-    title: "Cashier Performance",
-    description: "Individual cashier sales metrics",
-    icon: Users,
-    color: "text-accent bg-accent/10",
-    type: "staff",
-  },
-  {
-    title: "Inventory Report",
-    description: "Stock levels and movement analysis",
-    icon: Package,
-    color: "text-warning bg-warning/10",
-    type: "inventory",
-  },
-  {
-    title: "Category-wise Sales",
-    description: "Sales breakdown by product category",
-    icon: TrendingUp,
-    color: "text-primary bg-primary/10",
-    type: "sales",
-  },
-  {
-    title: "Repair Jobs Report",
-    description: "Repair revenue and completion rates",
-    icon: Wrench,
-    color: "text-info bg-info/10",
-    type: "repairs",
-  },
-  {
-    title: "Used Phone Profit",
-    description: "Profit analysis on used phone sales",
-    icon: Smartphone,
-    color: "text-success bg-success/10",
-    type: "used_phones",
-  },
-  {
-    title: "Top Selling Products",
-    description: "Best performing products this month",
-    icon: Package,
-    color: "text-accent bg-accent/10",
-    type: "inventory",
-  },
+  { title: "Daily Sales Report", description: "Detailed breakdown of today's sales transactions", icon: DollarSign, color: "text-success bg-success/10", type: "sales" },
+  { title: "Weekly Revenue Report", description: "Week-over-week revenue analysis", icon: TrendingUp, color: "text-primary bg-primary/10", type: "sales" },
+  { title: "Monthly P&L Report", description: "Profit and loss statement for the month", icon: FileText, color: "text-info bg-info/10", type: "financial" },
+  { title: "Cashier Performance", description: "Individual cashier sales metrics", icon: Users, color: "text-accent bg-accent/10", type: "staff" },
+  { title: "Inventory Report", description: "Stock levels and movement analysis", icon: Package, color: "text-warning bg-warning/10", type: "inventory" },
+  { title: "Category-wise Sales", description: "Sales breakdown by product category", icon: TrendingUp, color: "text-primary bg-primary/10", type: "sales" },
+  { title: "Repair Jobs Report", description: "Repair revenue and completion rates", icon: Wrench, color: "text-info bg-info/10", type: "repairs" },
+  { title: "Used Phone Profit", description: "Profit analysis on used phone sales", icon: Smartphone, color: "text-success bg-success/10", type: "used_phones" },
+  { title: "Top Selling Products", description: "Best performing products this month", icon: Package, color: "text-accent bg-accent/10", type: "inventory" },
 ];
 
 export default function Reports() {
   const [selectedType, setSelectedType] = useState("all");
   const [dateRange, setDateRange] = useState("month");
+  const { stats, loading: statsLoading } = useDashboardStats();
+  const { sales, loading: salesLoading } = useSales();
+  const { repairs, loading: repairsLoading } = useRepairs();
+
+  const loading = statsLoading || salesLoading || repairsLoading;
 
   const filteredReports = reports.filter(
     (report) => selectedType === "all" || report.type === selectedType
   );
+
+  const completedRepairs = repairs.filter(r => r.status === "completed" || r.status === "delivered").length;
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-10 w-48" />
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          {[1, 2, 3, 4].map((i) => <Skeleton key={i} className="h-24" />)}
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {[1, 2, 3, 4, 5, 6].map((i) => <Skeleton key={i} className="h-40" />)}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -124,23 +95,23 @@ export default function Reports() {
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
         <div className="bg-card rounded-xl p-4 shadow-card border border-border">
           <p className="text-sm text-muted-foreground">Total Sales</p>
-          <p className="text-2xl font-bold text-success">Rs 1,247,500</p>
-          <p className="text-xs text-success">+15% from last month</p>
+          <p className="text-2xl font-bold text-success">Rs {stats.monthlySales.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground">This month</p>
         </div>
         <div className="bg-card rounded-xl p-4 shadow-card border border-border">
-          <p className="text-sm text-muted-foreground">Net Profit</p>
-          <p className="text-2xl font-bold text-primary">Rs 312,400</p>
-          <p className="text-xs text-primary">+8% from last month</p>
+          <p className="text-sm text-muted-foreground">Weekly Revenue</p>
+          <p className="text-2xl font-bold text-primary">Rs {stats.weeklyRevenue.toLocaleString()}</p>
+          <p className="text-xs text-muted-foreground">This week</p>
         </div>
         <div className="bg-card rounded-xl p-4 shadow-card border border-border">
-          <p className="text-sm text-muted-foreground">Items Sold</p>
-          <p className="text-2xl font-bold">1,456</p>
-          <p className="text-xs text-muted-foreground">units this month</p>
+          <p className="text-sm text-muted-foreground">Total Transactions</p>
+          <p className="text-2xl font-bold">{sales.length}</p>
+          <p className="text-xs text-muted-foreground">all time</p>
         </div>
         <div className="bg-card rounded-xl p-4 shadow-card border border-border">
           <p className="text-sm text-muted-foreground">Repairs Completed</p>
-          <p className="text-2xl font-bold">89</p>
-          <p className="text-xs text-muted-foreground">jobs this month</p>
+          <p className="text-2xl font-bold">{completedRepairs}</p>
+          <p className="text-xs text-muted-foreground">all time</p>
         </div>
       </div>
 
@@ -168,7 +139,7 @@ export default function Reports() {
 
       {/* Reports Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filteredReports.map((report, index) => (
+        {filteredReports.map((report) => (
           <div
             key={report.title}
             className="bg-card rounded-xl border border-border p-5 shadow-card hover:shadow-card-hover transition-all duration-200 group"

@@ -22,50 +22,40 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-  discount: number;
-}
-
-const products = [
-  { id: "1", name: "iPhone 14 Pro Case", price: 1500, category: "accessories", stock: 45 },
-  { id: "2", name: "Samsung Charger 25W", price: 2500, category: "accessories", stock: 23 },
-  { id: "3", name: "AirPods Pro", price: 45000, category: "accessories", stock: 8 },
-  { id: "4", name: "USB-C Cable 2m", price: 500, category: "accessories", stock: 120 },
-  { id: "5", name: "Screen Protector iPhone 15", price: 800, category: "accessories", stock: 67 },
-  { id: "6", name: "Power Bank 20000mAh", price: 4500, category: "accessories", stock: 15 },
-  { id: "7", name: "Wireless Earbuds", price: 3500, category: "accessories", stock: 34 },
-  { id: "8", name: "Phone Stand Holder", price: 750, category: "accessories", stock: 56 },
-];
+import { useProducts } from "@/hooks/useProducts";
+import { useSales, CartItem } from "@/hooks/useSales";
 
 export default function POS() {
+  const { products, loading: productsLoading } = useProducts();
+  const { completeSale } = useSales();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [customerName, setCustomerName] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState<string>("");
+  const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "easypaisa" | "jazzcash" | "">("");
   const [globalDiscount, setGlobalDiscount] = useState(0);
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const categories = [...new Set(products.map(p => p.category))];
 
   const filteredProducts = products.filter((product) => {
     const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === "all" || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesCategory && product.stock > 0;
   });
 
   const addToCart = (product: typeof products[0]) => {
     setCart((prev) => {
       const existing = prev.find((item) => item.id === product.id);
       if (existing) {
+        if (existing.quantity >= product.stock) return prev;
         return prev.map((item) =>
           item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prev, { id: product.id, name: product.name, price: product.price, quantity: 1, discount: 0 }];
+      return [...prev, { id: product.id, product_id: product.id, name: product.name, price: Number(product.selling_price), quantity: 1 }];
     });
   };
 
@@ -86,6 +76,32 @@ export default function POS() {
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
   const discountAmount = (subtotal * globalDiscount) / 100;
   const total = subtotal - discountAmount;
+
+  const handleCompleteSale = async () => {
+    if (cart.length === 0 || !paymentMethod) return;
+    setIsProcessing(true);
+    const success = await completeSale(cart, customerName || null, globalDiscount, paymentMethod);
+    if (success) {
+      setCart([]);
+      setCustomerName("");
+      setGlobalDiscount(0);
+      setPaymentMethod("");
+    }
+    setIsProcessing(false);
+  };
+
+  if (productsLoading) {
+    return (
+      <div className="flex gap-6 h-[calc(100vh-8rem)]">
+        <div className="flex-1">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+            {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => <Skeleton key={i} className="h-40" />)}
+          </div>
+        </div>
+        <Skeleton className="w-[400px] h-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex gap-6 h-[calc(100vh-8rem)]">
@@ -110,9 +126,9 @@ export default function POS() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Items</SelectItem>
-              <SelectItem value="accessories">Accessories</SelectItem>
-              <SelectItem value="used_phone">Used Phones</SelectItem>
-              <SelectItem value="repair_service">Repairs</SelectItem>
+              {categories.map(cat => (
+                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -125,15 +141,17 @@ export default function POS() {
                 onClick={() => addToCart(product)}
                 className="bg-card p-4 rounded-xl border border-border hover:border-primary/50 hover:shadow-card-hover transition-all duration-200 text-left group"
               >
-                <div className="w-full aspect-square bg-secondary/50 rounded-lg mb-3 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                  <Smartphone className="w-8 h-8 text-muted-foreground group-hover:text-primary" />
+                <div className="w-full aspect-square bg-secondary/50 rounded-lg mb-3 flex items-center justify-center group-hover:bg-primary/10 transition-colors overflow-hidden">
+                  {product.image_url ? (
+                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <Smartphone className="w-8 h-8 text-muted-foreground group-hover:text-primary" />
+                  )}
                 </div>
                 <h3 className="font-medium text-sm truncate">{product.name}</h3>
                 <div className="flex items-center justify-between mt-2">
-                  <span className="font-bold text-primary">Rs {product.price.toLocaleString()}</span>
-                  <Badge variant="secondary" className="text-xs">
-                    {product.stock} left
-                  </Badge>
+                  <span className="font-bold text-primary">Rs {Number(product.selling_price).toLocaleString()}</span>
+                  <Badge variant="secondary" className="text-xs">{product.stock} left</Badge>
                 </div>
               </button>
             ))}
@@ -166,16 +184,11 @@ export default function POS() {
             </div>
           ) : (
             cart.map((item) => (
-              <div
-                key={item.id}
-                className="bg-secondary/50 rounded-lg p-3 animate-scale-in"
-              >
+              <div key={item.id} className="bg-secondary/50 rounded-lg p-3 animate-scale-in">
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">
                     <h4 className="font-medium text-sm truncate">{item.name}</h4>
-                    <p className="text-sm text-primary font-semibold">
-                      Rs {item.price.toLocaleString()}
-                    </p>
+                    <p className="text-sm text-primary font-semibold">Rs {item.price.toLocaleString()}</p>
                   </div>
                   <Button
                     variant="ghost"
@@ -188,27 +201,15 @@ export default function POS() {
                 </div>
                 <div className="flex items-center justify-between mt-2">
                   <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => updateQuantity(item.id, -1)}
-                    >
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, -1)}>
                       <Minus className="w-3 h-3" />
                     </Button>
                     <span className="w-8 text-center font-medium">{item.quantity}</span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="h-7 w-7"
-                      onClick={() => updateQuantity(item.id, 1)}
-                    >
+                    <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => updateQuantity(item.id, 1)}>
                       <Plus className="w-3 h-3" />
                     </Button>
                   </div>
-                  <span className="font-semibold">
-                    Rs {(item.price * item.quantity).toLocaleString()}
-                  </span>
+                  <span className="font-semibold">Rs {(item.price * item.quantity).toLocaleString()}</span>
                 </div>
               </div>
             ))
@@ -250,10 +251,10 @@ export default function POS() {
           {/* Payment Methods */}
           <div className="grid grid-cols-4 gap-2">
             {[
-              { value: "cash", icon: Banknote, label: "Cash" },
-              { value: "card", icon: CreditCard, label: "Card" },
-              { value: "easypaisa", icon: Smartphone, label: "Easy" },
-              { value: "jazzcash", icon: Smartphone, label: "Jazz" },
+              { value: "cash" as const, icon: Banknote, label: "Cash" },
+              { value: "card" as const, icon: CreditCard, label: "Card" },
+              { value: "easypaisa" as const, icon: Smartphone, label: "Easy" },
+              { value: "jazzcash" as const, icon: Smartphone, label: "Jazz" },
             ].map((method) => (
               <button
                 key={method.value}
@@ -276,10 +277,11 @@ export default function POS() {
             variant="glow"
             size="xl"
             className="w-full"
-            disabled={cart.length === 0 || !paymentMethod}
+            disabled={cart.length === 0 || !paymentMethod || isProcessing}
+            onClick={handleCompleteSale}
           >
             <Receipt className="w-5 h-5 mr-2" />
-            Complete Sale
+            {isProcessing ? "Processing..." : "Complete Sale"}
           </Button>
         </div>
       </div>
