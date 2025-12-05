@@ -72,12 +72,12 @@ export function useSales() {
   const completeSale = async (
     cart: CartItem[],
     customerName: string | null,
-    discountPercent: number,
+    discountAmount: number,
     paymentMethod: "cash" | "card" | "easypaisa" | "jazzcash"
   ) => {
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-    const discountAmount = (subtotal * discountPercent) / 100;
-    const total = subtotal - discountAmount;
+    const validDiscount = Math.min(discountAmount, subtotal);
+    const total = subtotal - validDiscount;
 
     // Create sale
     const { data: saleData, error: saleError } = await supabase
@@ -85,8 +85,8 @@ export function useSales() {
       .insert([{
         customer_name: customerName || null,
         subtotal,
-        discount_percent: discountPercent,
-        discount_amount: discountAmount,
+        discount_percent: 0,
+        discount_amount: validDiscount,
         total,
         payment_method: paymentMethod
       }])

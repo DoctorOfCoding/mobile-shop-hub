@@ -8,7 +8,6 @@ import {
   CreditCard,
   Banknote,
   Smartphone,
-  Percent,
   Receipt,
   User,
 } from "lucide-react";
@@ -35,7 +34,7 @@ export default function POS() {
   const [selectedCategory, setSelectedCategory] = useState("all");
   const [customerName, setCustomerName] = useState("");
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "easypaisa" | "jazzcash" | "">("");
-  const [globalDiscount, setGlobalDiscount] = useState(0);
+  const [discountAmount, setDiscountAmount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
 
   const categories = [...new Set(products.map(p => p.category))];
@@ -74,17 +73,17 @@ export default function POS() {
   };
 
   const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
-  const discountAmount = (subtotal * globalDiscount) / 100;
-  const total = subtotal - discountAmount;
+  const validDiscount = Math.min(discountAmount, subtotal);
+  const total = subtotal - validDiscount;
 
   const handleCompleteSale = async () => {
     if (cart.length === 0 || !paymentMethod) return;
     setIsProcessing(true);
-    const success = await completeSale(cart, customerName || null, globalDiscount, paymentMethod);
+    const success = await completeSale(cart, customerName || null, discountAmount, paymentMethod);
     if (success) {
       setCart([]);
       setCustomerName("");
-      setGlobalDiscount(0);
+      setDiscountAmount(0);
       setPaymentMethod("");
     }
     setIsProcessing(false);
@@ -219,19 +218,19 @@ export default function POS() {
           {/* Totals Row */}
           <div className="flex items-center gap-3 text-sm">
             <div className="flex-1 flex items-center gap-2">
-              <Percent className="w-4 h-4 text-muted-foreground" />
+              <Banknote className="w-4 h-4 text-muted-foreground" />
               <Input
                 type="number"
-                placeholder="Discount %"
-                value={globalDiscount || ""}
-                onChange={(e) => setGlobalDiscount(Number(e.target.value))}
-                className="h-7 text-sm w-20"
+                placeholder="Discount (Rs)"
+                value={discountAmount || ""}
+                onChange={(e) => setDiscountAmount(Math.max(0, Number(e.target.value)))}
+                className="h-7 text-sm w-24"
               />
             </div>
             <div className="text-right">
               <div className="text-muted-foreground text-xs">Subtotal: Rs {subtotal.toLocaleString()}</div>
-              {globalDiscount > 0 && (
-                <div className="text-success text-xs">-{globalDiscount}% = Rs {discountAmount.toLocaleString()}</div>
+              {validDiscount > 0 && (
+                <div className="text-success text-xs">Discount: -Rs {validDiscount.toLocaleString()}</div>
               )}
             </div>
           </div>
