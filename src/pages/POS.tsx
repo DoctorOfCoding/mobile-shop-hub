@@ -175,37 +175,37 @@ export default function POS() {
         </div>
 
         {/* Cart Items - Compact List */}
-        <div className="flex-1 overflow-auto min-h-0 max-h-[calc(100vh-26rem)]">
+        <div className="flex-1 overflow-auto min-h-0 max-h-[calc(100vh-18rem)]">
           {cart.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-6 text-muted-foreground">
-              <Receipt className="w-10 h-10 mb-2 opacity-50" />
+            <div className="flex flex-col items-center justify-center py-4 text-muted-foreground">
+              <Receipt className="w-8 h-8 mb-1 opacity-50" />
               <p className="text-sm">Cart is empty</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
               {cart.map((item) => (
-                <div key={item.id} className="px-4 py-2 flex items-center gap-3 hover:bg-secondary/30 transition-colors animate-scale-in">
+                <div key={item.id} className="px-3 py-1.5 flex items-center gap-2 hover:bg-secondary/30 transition-colors animate-scale-in">
                   <div className="flex-1 min-w-0">
-                    <h4 className="font-medium text-sm truncate">{item.name}</h4>
-                    <span className="text-xs text-muted-foreground">Rs {item.price.toLocaleString()} each</span>
+                    <h4 className="font-medium text-sm truncate leading-tight">{item.name}</h4>
+                    <span className="text-xs text-muted-foreground">Rs {item.price.toLocaleString()}</span>
                   </div>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.id, -1)}>
+                  <div className="flex items-center gap-0.5">
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => updateQuantity(item.id, -1)}>
                       <Minus className="w-3 h-3" />
                     </Button>
-                    <span className="w-6 text-center text-sm font-medium">{item.quantity}</span>
-                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => updateQuantity(item.id, 1)}>
+                    <span className="w-5 text-center text-xs font-medium">{item.quantity}</span>
+                    <Button variant="ghost" size="icon" className="h-5 w-5" onClick={() => updateQuantity(item.id, 1)}>
                       <Plus className="w-3 h-3" />
                     </Button>
                   </div>
-                  <span className="font-semibold text-sm w-20 text-right">Rs {(item.price * item.quantity).toLocaleString()}</span>
+                  <span className="font-semibold text-xs w-16 text-right">Rs {(item.price * item.quantity).toLocaleString()}</span>
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="h-6 w-6 text-destructive/70 hover:text-destructive"
+                    className="h-5 w-5 text-destructive/70 hover:text-destructive"
                     onClick={() => removeFromCart(item.id)}
                   >
-                    <Trash2 className="w-3.5 h-3.5" />
+                    <Trash2 className="w-3 h-3" />
                   </Button>
                 </div>
               ))}
