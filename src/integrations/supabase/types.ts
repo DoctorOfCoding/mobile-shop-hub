@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action_type: string
+          created_at: string | null
+          description: string
+          id: string
+          item_id: string | null
+          item_type: string | null
+          metadata: Json | null
+          role: string
+          user_id: string | null
+          username: string
+        }
+        Insert: {
+          action_type: string
+          created_at?: string | null
+          description: string
+          id?: string
+          item_id?: string | null
+          item_type?: string | null
+          metadata?: Json | null
+          role: string
+          user_id?: string | null
+          username: string
+        }
+        Update: {
+          action_type?: string
+          created_at?: string | null
+          description?: string
+          id?: string
+          item_id?: string | null
+          item_type?: string | null
+          metadata?: Json | null
+          role?: string
+          user_id?: string | null
+          username?: string
+        }
+        Relationships: []
+      }
       customers: {
         Row: {
           created_at: string
@@ -95,6 +134,39 @@ export type Database = {
           stock?: number
           supplier?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string | null
+          email: string | null
+          full_name: string | null
+          id: string
+          is_active: boolean | null
+          updated_at: string | null
+          username: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          username: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string | null
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          is_active?: boolean | null
+          updated_at?: string | null
+          username?: string
         }
         Relationships: []
       }
