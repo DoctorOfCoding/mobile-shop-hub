@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-
+import { customerSchema, formatValidationErrors } from "@/lib/validations";
 export interface Customer {
   id: string;
   name: string;
@@ -60,8 +60,19 @@ export function useCustomers() {
   }, []);
 
   const addCustomer = async (customer: CustomerFormData) => {
+    const validation = customerSchema.safeParse(customer);
+    if (!validation.success) {
+      toast({ title: "Validation Error", description: formatValidationErrors(validation.error), variant: "destructive" });
+      return false;
+    }
     const { data: { user } } = await supabase.auth.getUser();
-    const { error } = await supabase.from("customers").insert([{ ...customer, created_by: user?.id }]);
+    const validatedData = validation.data;
+    const { error } = await supabase.from("customers").insert([{ 
+      name: validatedData.name, 
+      phone: validatedData.phone, 
+      email: validatedData.email || null,
+      created_by: user?.id 
+    }]);
     if (error) {
       toast({ title: "Error adding customer", description: error.message, variant: "destructive" });
       return false;
@@ -71,7 +82,12 @@ export function useCustomers() {
   };
 
   const updateCustomer = async (id: string, customer: Partial<CustomerFormData>) => {
-    const { error } = await supabase.from("customers").update({ ...customer, updated_at: new Date().toISOString() }).eq("id", id);
+    const validation = customerSchema.partial().safeParse(customer);
+    if (!validation.success) {
+      toast({ title: "Validation Error", description: formatValidationErrors(validation.error), variant: "destructive" });
+      return false;
+    }
+    const { error } = await supabase.from("customers").update({ ...validation.data, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) {
       toast({ title: "Error updating customer", description: error.message, variant: "destructive" });
       return false;
