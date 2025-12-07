@@ -1,4 +1,4 @@
-import { ReactNode } from "react";
+import { ReactNode, useEffect, useState } from "react";
 import { AppSidebar } from "./AppSidebar";
 import { Bell, Search, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/hooks/useAuth";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MainLayoutProps {
   children: ReactNode;
@@ -23,6 +24,40 @@ export function MainLayout({ children }: MainLayoutProps) {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const [userName, setUserName] = useState<string>("");
+  const [userRole, setUserRole] = useState<string>("");
+
+  useEffect(() => {
+    const fetchUserDetails = async () => {
+      if (!user?.id) return;
+
+      // Fetch profile
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("full_name, username")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        setUserName(profile.full_name || profile.username || user.email?.split("@")[0] || "User");
+      }
+
+      // Fetch role
+      const { data: roleData } = await supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", user.id)
+        .single();
+
+      if (roleData) {
+        setUserRole(roleData.role === "admin" ? "Admin" : "User");
+      } else {
+        setUserRole("Role not assigned");
+      }
+    };
+
+    fetchUserDetails();
+  }, [user?.id, user?.email]);
 
   const handleSignOut = async () => {
     const { error } = await signOut();
@@ -36,8 +71,6 @@ export function MainLayout({ children }: MainLayoutProps) {
       navigate("/auth", { replace: true });
     }
   };
-
-  const displayName = user?.email?.split("@")[0] || "User";
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -67,8 +100,8 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-3 pl-3 border-l border-border cursor-pointer hover:bg-accent/10 rounded-lg px-3 py-2 transition-colors">
                     <div className="text-right">
-                      <p className="text-sm font-medium">{displayName}</p>
-                      <p className="text-xs text-muted-foreground">{user?.email}</p>
+                      <p className="text-sm font-medium">{userName || "User"}</p>
+                      <p className="text-xs text-muted-foreground">{userRole || "Loading..."}</p>
                     </div>
                     <div className="rounded-full bg-primary/10 p-2">
                       <User className="w-5 h-5 text-primary" />
