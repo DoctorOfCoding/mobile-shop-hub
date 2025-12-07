@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, useLocation, useNavigate } from "react-router-dom";
+import { NavLink, useLocation } from "react-router-dom";
 import {
   LayoutDashboard,
   ShoppingCart,
@@ -13,42 +13,24 @@ import {
   ChevronLeft,
   ChevronRight,
   Store,
-  Activity,
-  UserCog,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 
-// Menu items with role restrictions
-const getMenuItems = (isAdmin: boolean) => {
-  const items = [
-    { title: "Dashboard", url: "/", icon: LayoutDashboard, adminOnly: true },
-    { title: "Point of Sale", url: "/pos", icon: ShoppingCart, adminOnly: false },
-    { title: "Inventory", url: "/inventory", icon: Package, adminOnly: false },
-    { title: "Repairs", url: "/repairs", icon: Wrench, adminOnly: false },
-    { title: "Used Phones", url: "/used-phones", icon: Smartphone, adminOnly: false },
-    { title: "Customers", url: "/customers", icon: Users, adminOnly: false },
-    { title: "Reports", url: "/reports", icon: FileText, adminOnly: true },
-    { title: "Activity Log", url: "/activity", icon: Activity, adminOnly: false },
-    { title: "User Management", url: "/users", icon: UserCog, adminOnly: true },
-    { title: "Settings", url: "/settings", icon: Settings, adminOnly: true },
-  ];
-
-  return items.filter(item => isAdmin || !item.adminOnly);
-};
+const menuItems = [
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  { title: "Point of Sale", url: "/pos", icon: ShoppingCart },
+  { title: "Inventory", url: "/inventory", icon: Package },
+  { title: "Repairs", url: "/repairs", icon: Wrench },
+  { title: "Used Phones", url: "/used-phones", icon: Smartphone },
+  { title: "Customers", url: "/customers", icon: Users },
+  { title: "Reports", url: "/reports", icon: FileText },
+  { title: "Settings", url: "/settings", icon: Settings },
+];
 
 export function AppSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const location = useLocation();
-  const navigate = useNavigate();
-  const { isAdmin, signOut } = useAuth();
-
-  const menuItems = getMenuItems(isAdmin);
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate('/auth');
-  };
 
   return (
     <aside
@@ -125,7 +107,6 @@ export function AppSidebar() {
           )}
         </button>
         <button
-          onClick={handleLogout}
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-lg w-full transition-all duration-200",
             "hover:bg-destructive/20 text-sidebar-foreground/70 hover:text-destructive",

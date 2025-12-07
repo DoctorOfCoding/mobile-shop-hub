@@ -1,6 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { AppSidebar } from "./AppSidebar";
-import { Bell, Search, User, LogOut } from "lucide-react";
+import { Bell, Search, User, ChevronDown, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,22 +11,21 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useAuth } from "@/contexts/AuthContext";
-import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
+
+// Mock users data - replace with actual data from backend
+const mockUsers = [
+  { id: "1", name: "Admin User", role: "Administrator", email: "admin@mobileshop.com" },
+  { id: "2", name: "John Smith", role: "Cashier", email: "john@mobileshop.com" },
+  { id: "3", name: "Sarah Wilson", role: "Cashier", email: "sarah@mobileshop.com" },
+  { id: "4", name: "Mike Johnson", role: "Technician", email: "mike@mobileshop.com" },
+];
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
-  const { profile, role, isAdmin, signOut } = useAuth();
-  const navigate = useNavigate();
-
-  const handleLogout = async () => {
-    await signOut();
-    navigate('/auth');
-  };
+  const [selectedUser, setSelectedUser] = useState(mockUsers[0]);
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -56,32 +55,38 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-3 pl-3 border-l border-border cursor-pointer hover:bg-accent/10 rounded-lg px-3 py-2 transition-colors">
                     <div className="text-right">
-                      <p className="text-sm font-medium">{profile?.full_name || profile?.username || 'User'}</p>
-                      <div className="flex items-center gap-1 justify-end">
-                        <Badge variant={isAdmin ? 'default' : 'secondary'} className="text-[10px] h-4">
-                          {isAdmin ? 'Manager' : 'Employee'}
-                        </Badge>
-                      </div>
+                      <p className="text-sm font-medium">{selectedUser.name}</p>
+                      <p className="text-xs text-muted-foreground">{selectedUser.role}</p>
                     </div>
                     <div className="rounded-full bg-primary/10 p-2">
                       <User className="w-5 h-5 text-primary" />
                     </div>
+                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <DropdownMenuLabel>
-                    <div className="flex flex-col">
-                      <span>{profile?.full_name || profile?.username}</span>
-                      <span className="text-xs font-normal text-muted-foreground">
-                        {profile?.email}
-                      </span>
-                    </div>
-                  </DropdownMenuLabel>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuLabel>Switch User</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Logout
-                  </DropdownMenuItem>
+                  {mockUsers.map((user) => (
+                    <DropdownMenuItem
+                      key={user.id}
+                      onClick={() => setSelectedUser(user)}
+                      className="flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="rounded-full bg-primary/10 p-2">
+                          <User className="w-4 h-4 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">{user.name}</p>
+                          <p className="text-xs text-muted-foreground">{user.role}</p>
+                        </div>
+                      </div>
+                      {selectedUser.id === user.id && (
+                        <Check className="w-4 h-4 text-primary" />
+                      )}
+                    </DropdownMenuItem>
+                  ))}
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
