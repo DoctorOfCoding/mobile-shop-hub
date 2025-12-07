@@ -60,7 +60,8 @@ export function useCustomers() {
   }, []);
 
   const addCustomer = async (customer: CustomerFormData) => {
-    const { error } = await supabase.from("customers").insert([customer]);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("customers").insert([{ ...customer, created_by: user?.id }]);
     if (error) {
       toast({ title: "Error adding customer", description: error.message, variant: "destructive" });
       return false;
