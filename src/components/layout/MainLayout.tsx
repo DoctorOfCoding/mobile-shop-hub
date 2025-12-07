@@ -1,6 +1,6 @@
-import { ReactNode, useState } from "react";
+import { ReactNode } from "react";
 import { AppSidebar } from "./AppSidebar";
-import { Bell, Search, User, ChevronDown, Check } from "lucide-react";
+import { Bell, Search, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -11,21 +11,33 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-// Mock users data - replace with actual data from backend
-const mockUsers = [
-  { id: "1", name: "Admin User", role: "Administrator", email: "admin@mobileshop.com" },
-  { id: "2", name: "John Smith", role: "Cashier", email: "john@mobileshop.com" },
-  { id: "3", name: "Sarah Wilson", role: "Cashier", email: "sarah@mobileshop.com" },
-  { id: "4", name: "Mike Johnson", role: "Technician", email: "mike@mobileshop.com" },
-];
+import { useAuth } from "@/hooks/useAuth";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 interface MainLayoutProps {
   children: ReactNode;
 }
 
 export function MainLayout({ children }: MainLayoutProps) {
-  const [selectedUser, setSelectedUser] = useState(mockUsers[0]);
+  const { user, signOut } = useAuth();
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleSignOut = async () => {
+    const { error } = await signOut();
+    if (error) {
+      toast({
+        title: "Sign Out Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } else {
+      navigate("/auth", { replace: true });
+    }
+  };
+
+  const displayName = user?.email?.split("@")[0] || "User";
 
   return (
     <div className="flex min-h-screen w-full bg-background">
@@ -55,38 +67,24 @@ export function MainLayout({ children }: MainLayoutProps) {
                 <DropdownMenuTrigger asChild>
                   <button className="flex items-center gap-3 pl-3 border-l border-border cursor-pointer hover:bg-accent/10 rounded-lg px-3 py-2 transition-colors">
                     <div className="text-right">
-                      <p className="text-sm font-medium">{selectedUser.name}</p>
-                      <p className="text-xs text-muted-foreground">{selectedUser.role}</p>
+                      <p className="text-sm font-medium">{displayName}</p>
+                      <p className="text-xs text-muted-foreground">{user?.email}</p>
                     </div>
                     <div className="rounded-full bg-primary/10 p-2">
                       <User className="w-5 h-5 text-primary" />
                     </div>
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-64">
-                  <DropdownMenuLabel>Switch User</DropdownMenuLabel>
+                  <DropdownMenuLabel>Account</DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  {mockUsers.map((user) => (
-                    <DropdownMenuItem
-                      key={user.id}
-                      onClick={() => setSelectedUser(user)}
-                      className="flex items-center justify-between cursor-pointer"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="rounded-full bg-primary/10 p-2">
-                          <User className="w-4 h-4 text-primary" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-medium">{user.name}</p>
-                          <p className="text-xs text-muted-foreground">{user.role}</p>
-                        </div>
-                      </div>
-                      {selectedUser.id === user.id && (
-                        <Check className="w-4 h-4 text-primary" />
-                      )}
-                    </DropdownMenuItem>
-                  ))}
+                  <DropdownMenuItem
+                    onClick={handleSignOut}
+                    className="cursor-pointer text-destructive focus:text-destructive"
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
