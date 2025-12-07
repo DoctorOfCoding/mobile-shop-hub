@@ -1,7 +1,8 @@
 import { ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router-dom';
+import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -9,8 +10,9 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRouteProps) {
-  const { user, loading, isAdmin, isEmployee } = useAuth();
+  const { user, loading, isAdmin } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
 
   if (loading) {
     return (
@@ -32,9 +34,13 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
             <span className="text-3xl">🚫</span>
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Access Denied</h1>
-          <p className="text-muted-foreground">
+          <p className="text-muted-foreground mb-6">
             You don't have permission for this action. This page is only accessible to Managers.
           </p>
+          <Button onClick={() => navigate(-1)} variant="outline">
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Go Back
+          </Button>
         </div>
       </div>
     );
