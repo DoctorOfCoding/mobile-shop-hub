@@ -44,6 +44,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useRepairs, Repair, RepairFormData } from "@/hooks/useRepairs";
+import { CustomerSelector } from "@/components/CustomerSelector";
+import { Customer } from "@/hooks/useCustomers";
+import { useIsAdmin } from "@/hooks/useIsAdmin";
 
 const statusConfig = {
   pending: { label: "Pending", color: "bg-warning/10 text-warning border-warning/20", icon: Clock },
@@ -54,15 +57,20 @@ const statusConfig = {
 
 export default function Repairs() {
   const { repairs, loading, addRepair, updateRepair, deleteRepair } = useRepairs();
+  const { isAdmin } = useIsAdmin();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedRepair, setSelectedRepair] = useState<Repair | null>(null);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [formData, setFormData] = useState<RepairFormData>({
     customer_name: "", customer_phone: "", device_model: "", imei: "", problem: "", estimated_cost: 0, advance_payment: 0, technician: ""
   });
+
+  // Auto-populate date when dialog opens
+  const currentDateTime = new Date().toLocaleString();
 
   const filteredJobs = repairs.filter((job) => {
     const matchesSearch =
@@ -81,9 +89,15 @@ export default function Repairs() {
   };
 
   const handleAdd = async () => {
-    const success = await addRepair(formData);
+    // Use selected customer data if available
+    const customerData = selectedCustomer 
+      ? { customer_name: selectedCustomer.name, customer_phone: selectedCustomer.phone }
+      : { customer_name: formData.customer_name, customer_phone: formData.customer_phone };
+    
+    const success = await addRepair({ ...formData, ...customerData });
     if (success) {
       setIsAddDialogOpen(false);
+      setSelectedCustomer(null);
       setFormData({ customer_name: "", customer_phone: "", device_model: "", imei: "", problem: "", estimated_cost: 0, advance_payment: 0, technician: "" });
     }
   };
@@ -149,7 +163,7 @@ export default function Repairs() {
         </div>
         <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
           <DialogTrigger asChild>
-            <Button variant="glow" onClick={() => setFormData({ customer_name: "", customer_phone: "", device_model: "", imei: "", problem: "", estimated_cost: 0, advance_payment: 0, technician: "" })}>
+            <Button variant="glow" onClick={() => { setSelectedCustomer(null); setFormData({ customer_name: "", customer_phone: "", device_model: "", imei: "", problem: "", estimated_cost: 0, advance_payment: 0, technician: "" }); }}>
               <Plus className="w-4 h-4 mr-2" />
               New Repair Job
             </Button>
@@ -159,16 +173,40 @@ export default function Repairs() {
               <DialogTitle>Register New Repair Job</DialogTitle>
             </DialogHeader>
             <div className="space-y-4 py-4 max-h-[60vh] overflow-y-auto">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Customer Name</Label>
-                  <Input value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} placeholder="Enter name" />
-                </div>
-                <div className="space-y-2">
-                  <Label>Phone Number</Label>
-                  <Input value={formData.customer_phone} onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} placeholder="03XX-XXXXXXX" />
-                </div>
+              {/* Date/Time Display */}
+              <div className="bg-muted/50 rounded-lg p-3 flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-muted-foreground" />
+                <span className="text-sm text-muted-foreground">Created: {currentDateTime}</span>
               </div>
+
+              {/* Customer Selection */}
+              <div className="space-y-2">
+                <Label>Select Existing Customer</Label>
+                <CustomerSelector
+                  value={selectedCustomer}
+                  onSelect={(customer) => {
+                    setSelectedCustomer(customer);
+                    if (customer) {
+                      setFormData({ ...formData, customer_name: customer.name, customer_phone: customer.phone });
+                    }
+                  }}
+                  placeholder="Select or add customer..."
+                  className="w-full"
+                />
+              </div>
+
+              {!selectedCustomer && (
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Customer Name</Label>
+                    <Input value={formData.customer_name} onChange={(e) => setFormData({ ...formData, customer_name: e.target.value })} placeholder="Enter name" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Phone Number</Label>
+                    <Input value={formData.customer_phone} onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })} placeholder="03XX-XXXXXXX" />
+                  </div>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Device Model</Label>
@@ -281,12 +319,16 @@ export default function Repairs() {
                     <StatusIcon className="w-3 h-3 mr-1" />
                     {status.label}
                   </Badge>
-                  <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(job)}>
-                    <Pencil className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { setSelectedRepair(job); setIsDeleteDialogOpen(true); }}>
-                    <Trash2 className="w-4 h-4" />
-                  </Button>
+                  {isAdmin && (
+                    <>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditDialog(job)}>
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => { setSelectedRepair(job); setIsDeleteDialogOpen(true); }}>
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </>
+                  )}
                 </div>
               </div>
 
