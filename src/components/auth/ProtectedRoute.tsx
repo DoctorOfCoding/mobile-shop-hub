@@ -37,9 +37,9 @@ export function ProtectedRoute({ children, requireAdmin = false }: ProtectedRout
           <p className="text-muted-foreground mb-6">
             You don't have permission for this action. This page is only accessible to Managers.
           </p>
-          <Button onClick={() => navigate(-1)} variant="outline">
+          <Button onClick={() => navigate('/auth')} variant="outline">
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Go Back
+            Go to Login
           </Button>
         </div>
       </div>
