@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
-
+import { repairSchema, formatValidationErrors } from "@/lib/validations";
 export interface Repair {
   id: string;
   job_id: string;
@@ -69,7 +69,23 @@ export function useRepairs() {
   }, []);
 
   const addRepair = async (repair: RepairFormData) => {
-    const { error } = await supabase.from("repairs").insert([{ ...repair, job_id: "" }]);
+    const validation = repairSchema.safeParse(repair);
+    if (!validation.success) {
+      toast({ title: "Validation Error", description: formatValidationErrors(validation.error), variant: "destructive" });
+      return false;
+    }
+    const validatedData = validation.data;
+    const { error } = await supabase.from("repairs").insert([{ 
+      customer_name: validatedData.customer_name,
+      customer_phone: validatedData.customer_phone,
+      device_model: validatedData.device_model,
+      imei: validatedData.imei || null,
+      problem: validatedData.problem,
+      estimated_cost: validatedData.estimated_cost,
+      advance_payment: validatedData.advance_payment,
+      technician: validatedData.technician || null,
+      job_id: "" 
+    }]);
     if (error) {
       toast({ title: "Error adding repair job", description: error.message, variant: "destructive" });
       return false;
@@ -79,7 +95,12 @@ export function useRepairs() {
   };
 
   const updateRepair = async (id: string, repair: Partial<Repair>) => {
-    const { error } = await supabase.from("repairs").update({ ...repair, updated_at: new Date().toISOString() }).eq("id", id);
+    const validation = repairSchema.partial().safeParse(repair);
+    if (!validation.success) {
+      toast({ title: "Validation Error", description: formatValidationErrors(validation.error), variant: "destructive" });
+      return false;
+    }
+    const { error } = await supabase.from("repairs").update({ ...validation.data, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) {
       toast({ title: "Error updating repair", description: error.message, variant: "destructive" });
       return false;

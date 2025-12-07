@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { productSchema, formatValidationErrors } from "@/lib/validations";
 
 export interface Product {
   id: string;
@@ -85,43 +86,50 @@ export function useProducts() {
   }, []);
 
   const addProduct = async (product: ProductFormData) => {
-    const { error } = await supabase.from("products").insert([product]);
+    const validation = productSchema.safeParse(product);
+    if (!validation.success) {
+      toast({ title: "Validation Error", description: formatValidationErrors(validation.error), variant: "destructive" });
+      return false;
+    }
+    const validatedData = validation.data;
+    const { error } = await supabase.from("products").insert([{
+      name: validatedData.name,
+      category: validatedData.category,
+      sku: validatedData.sku,
+      cost_price: validatedData.cost_price,
+      selling_price: validatedData.selling_price,
+      stock: validatedData.stock,
+      min_stock: validatedData.min_stock,
+      supplier: validatedData.supplier || null,
+      image_url: product.image_url || null,
+    }]);
 
     if (error) {
-      toast({
-        title: "Error adding product",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error adding product", description: error.message, variant: "destructive" });
       return false;
     }
 
-    toast({
-      title: "Product Added",
-      description: "The product has been added successfully.",
-    });
+    toast({ title: "Product Added", description: "The product has been added successfully." });
     return true;
   };
 
   const updateProduct = async (id: string, product: Partial<ProductFormData>) => {
+    const validation = productSchema.partial().safeParse(product);
+    if (!validation.success) {
+      toast({ title: "Validation Error", description: formatValidationErrors(validation.error), variant: "destructive" });
+      return false;
+    }
     const { error } = await supabase
       .from("products")
-      .update({ ...product, updated_at: new Date().toISOString() })
+      .update({ ...validation.data, updated_at: new Date().toISOString() })
       .eq("id", id);
 
     if (error) {
-      toast({
-        title: "Error updating product",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error updating product", description: error.message, variant: "destructive" });
       return false;
     }
 
-    toast({
-      title: "Product Updated",
-      description: "The product has been updated successfully.",
-    });
+    toast({ title: "Product Updated", description: "The product has been updated successfully." });
     return true;
   };
 
