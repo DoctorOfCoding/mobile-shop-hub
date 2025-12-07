@@ -9,7 +9,6 @@ import {
   Banknote,
   Smartphone,
   Receipt,
-  User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +24,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "@/lib/utils";
 import { useProducts } from "@/hooks/useProducts";
 import { useSales, CartItem } from "@/hooks/useSales";
+import { CustomerSelector } from "@/components/CustomerSelector";
+import { Customer } from "@/hooks/useCustomers";
 
 export default function POS() {
   const { products, loading: productsLoading } = useProducts();
@@ -32,7 +33,7 @@ export default function POS() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("all");
-  const [customerName, setCustomerName] = useState("");
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [paymentMethod, setPaymentMethod] = useState<"cash" | "card" | "easypaisa" | "jazzcash" | "">("");
   const [discountAmount, setDiscountAmount] = useState(0);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -79,10 +80,10 @@ export default function POS() {
   const handleCompleteSale = async () => {
     if (cart.length === 0 || !paymentMethod) return;
     setIsProcessing(true);
-    const success = await completeSale(cart, customerName || null, discountAmount, paymentMethod);
+    const success = await completeSale(cart, selectedCustomer?.name || null, discountAmount, paymentMethod, selectedCustomer?.id || null);
     if (success) {
       setCart([]);
-      setCustomerName("");
+      setSelectedCustomer(null);
       setDiscountAmount(0);
       setPaymentMethod("");
     }
@@ -162,15 +163,12 @@ export default function POS() {
       <div className="w-[420px] bg-card rounded-xl border border-border flex flex-col shadow-card">
         <div className="px-4 py-3 border-b border-border flex items-center gap-3">
           <h2 className="font-display font-semibold text-lg whitespace-nowrap">Sale</h2>
-          <div className="flex items-center gap-2 flex-1">
-            <User className="w-4 h-4 text-muted-foreground shrink-0" />
-            <Input
-              placeholder="Customer (optional)"
-              value={customerName}
-              onChange={(e) => setCustomerName(e.target.value)}
-              className="h-7 text-sm"
-            />
-          </div>
+          <CustomerSelector
+            value={selectedCustomer}
+            onSelect={setSelectedCustomer}
+            placeholder="Select customer"
+            className="flex-1 h-8 text-sm"
+          />
           <Badge variant="secondary" className="shrink-0">{cart.length} items</Badge>
         </div>
 

@@ -73,7 +73,8 @@ export function useSales() {
     cart: CartItem[],
     customerName: string | null,
     discountAmount: number,
-    paymentMethod: "cash" | "card" | "easypaisa" | "jazzcash"
+    paymentMethod: "cash" | "card" | "easypaisa" | "jazzcash",
+    customerId: string | null = null
   ) => {
     const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
     const validDiscount = Math.min(discountAmount, subtotal);
@@ -84,6 +85,7 @@ export function useSales() {
       .from("sales")
       .insert([{
         customer_name: customerName || null,
+        customer_id: customerId || null,
         subtotal,
         discount_percent: 0,
         discount_amount: validDiscount,
